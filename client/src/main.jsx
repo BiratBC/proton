@@ -6,7 +6,7 @@ import Root from "./Root.jsx";
 import HomePage from "./pages/Homepage.jsx";
 import LoginPage from "./pages/Login.jsx";
 import SignupPage from "./pages/Signup.jsx";
-import RealtimeVerifier from "./pages/RealtimeVerifier.jsx";
+import RealtimeVerifier from "./pages/Dashboard.jsx";
 import "./index.css";
 import { LoadingBarContainer } from "react-top-loading-bar";
 import { ToastContainer } from "react-toastify";

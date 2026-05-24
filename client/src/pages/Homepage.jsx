@@ -1,173 +1,264 @@
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
+// ── Ambient blob ──────────────────────────────────────────────────────────────
+const Blob = ({ className }) => (
+  <div className={`absolute rounded-full blur-[90px] opacity-40 pointer-events-none ${className}`} />
+);
 
-export default function HomePage() {
-  const [currentUser, setCurrentUser] = useState("")
-  const auth = getAuth();
-  onAuthStateChanged(auth, (user) => {
-  if (user) {
-    // User is signed in, see docs for a list of available properties
-    const uid = user.uid;
-    setCurrentUser(user.displayName);
-    console.log(user);
-    
-  } else {
-    // User is signed out
-    console.log("No user is signed in.");
-  }
-  });
+// ── Metric card ───────────────────────────────────────────────────────────────
+const colorMap = {
+  green: {
+    bar: "from-emerald-400 to-teal-300",
+    value: "text-emerald-700",
+    badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    dot: "bg-emerald-500",
+  },
+  blue: {
+    bar: "from-blue-400 to-sky-300",
+    value: "text-blue-700",
+    badge: "bg-blue-50 text-blue-700 border-blue-200",
+    dot: "bg-blue-500",
+  },
+  red: {
+    bar: "from-rose-400 to-pink-300",
+    value: "text-rose-700",
+    badge: "bg-rose-50 text-rose-700 border-rose-200",
+    dot: "bg-rose-500",
+  },
+  amber: {
+    bar: "from-amber-400 to-yellow-300",
+    value: "text-amber-700",
+    badge: "bg-amber-50 text-amber-700 border-amber-200",
+    dot: "bg-amber-500",
+  },
+};
+
+const MetricCard = ({ label, value, unit, status, color, delay = 0 }) => {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+
+  const c = colorMap[color];
+  return (
+    <div
+      className="transition-all duration-700"
+      style={{ opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(20px)" }}
+    >
+      <Card className="relative overflow-hidden border border-white/80 bg-white/50 shadow-lg backdrop-blur-xl hover:-translate-y-1 hover:shadow-xl transition-all duration-300 rounded-2xl">
+        <div className={`absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r ${c.bar}`} />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent pointer-events-none" />
+        <CardContent className="pt-6 pb-5 px-5 relative z-10">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 mb-2">{label}</p>
+          <div className="flex items-baseline gap-1 mb-3">
+            <span className={`text-4xl font-bold tracking-tight ${c.value}`}>{value}</span>
+            <span className="text-sm font-medium text-slate-400">{unit}</span>
+          </div>
+          <Badge
+            variant="outline"
+            className={`text-[11px] font-semibold px-3 py-0.5 rounded-full border ${c.badge} flex items-center gap-1.5 w-fit`}
+          >
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${c.dot} animate-pulse`} />
+            {status}
+          </Badge>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+// ── Feature card ──────────────────────────────────────────────────────────────
+const FeatureCard = ({ icon, title, body, delay = 0 }) => {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 text-gray-800">
-      {/* Navbar */}
-      <nav className="flex items-center justify-between px-8 py-5 shadow-sm bg-white/80 backdrop-blur-md sticky top-0 z-50">
-        <h1 className="text-2xl font-bold text-green-700">Proton</h1>
+    <div
+      className="transition-all duration-700"
+      style={{ opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(24px)" }}
+    >
+      <Card className="group relative overflow-hidden border border-white/80 bg-white/50 backdrop-blur-xl shadow-md hover:-translate-y-2 hover:shadow-2xl transition-all duration-300 h-full rounded-3xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-white/50 via-white/20 to-transparent pointer-events-none" />
+        <CardContent className="p-8 relative z-10">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-3xl mb-5 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+            {icon}
+          </div>
+          <h3 className="text-[18px] font-semibold tracking-tight text-slate-800 mb-2.5">{title}</h3>
+          <p className="text-[14px] leading-relaxed text-slate-500">{body}</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
-        <div className="flex gap-6 text-sm font-medium">
-          <a href="#features" className="hover:text-green-600 transition">
-            Features
-          </a>
-          <a href="#about" className="hover:text-green-600 transition">
-            About
-          </a>
-          <a href="#dashboard" className="hover:text-green-600 transition">
-            Dashboard
-          </a>
-        </div>
-      </nav>
+// ── Main page ─────────────────────────────────────────────────────────────────
+export default function HomePage() {
+ 
 
-      {/* Hero Section */}
-      <section className="px-8 py-20 max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-        <div>
-          <p className="text-green-600 font-semibold mb-3 uppercase tracking-wide">
+  const metrics = [
+    { label: "Air Quality", value: "42",  unit: "AQI",   status: "Good",     color: "green", delay: 200 },
+    { label: "CO Level",    value: "9",   unit: "ppm",   status: "Safe",     color: "blue",  delay: 350 },
+    { label: "Heart Rate",  value: "78",  unit: "BPM",   status: "Normal",   color: "red",   delay: 500 },
+    { label: "PM2.5",       value: "18",  unit: "μg/m³", status: "Moderate", color: "amber", delay: 650 },
+  ];
+
+  const features = [
+    {
+      icon: "⌚",
+      title: "Smart Wearable",
+      body: "Collects body temperature, heart rate, and health data to measure environmental impact on the user.",
+      delay: 300,
+    },
+    {
+      icon: "🌫️",
+      title: "Pollution Detection",
+      body: "Uses MQ-7 and dust sensors connected with ESP32 for real-time air quality monitoring.",
+      delay: 450,
+    },
+    {
+      icon: "📊",
+      title: "Live Analytics",
+      body: "Visualizes health and pollution trends with a responsive React dashboard and cloud integration.",
+      delay: 600,
+    },
+  ];
+
+  return (
+    <div className="relative min-h-screen overflow-x-hidden bg-gradient-to-br from-green-50 via-white to-teal-50 text-gray-800">
+
+      {/* Keyframe animations injected once */}
+      <style>{`
+        @keyframes drift1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(40px,60px) scale(1.06)} }
+        @keyframes drift2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-50px,30px)} }
+        @keyframes drift3 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(30px,-40px) scale(0.95)} 66%{transform:translate(-20px,20px) scale(1.02)} }
+      `}</style>
+
+      {/* Ambient blobs */}
+      <Blob className="w-[600px] h-[600px] bg-gradient-to-br from-emerald-300 to-teal-200 -top-32 -left-32" style={{ animation: "drift1 18s ease-in-out infinite" }} />
+      <Blob className="w-[500px] h-[500px] bg-gradient-to-br from-blue-200 to-sky-200 top-1/2 -right-24" style={{ animation: "drift2 22s ease-in-out infinite" }} />
+      <Blob className="w-[400px] h-[400px] bg-gradient-to-br from-emerald-100 to-lime-200 bottom-20 left-1/4" style={{ animation: "drift3 16s ease-in-out infinite" }} />
+
+      {/* ── NAV ───────────────────────────────────────────────────────────── */}
+     
+
+      {/* ── HERO ──────────────────────────────────────────────────────────── */}
+      <section className="relative z-10 max-w-7xl mx-auto px-8 py-24 grid md:grid-cols-2 gap-16 items-center">
+        <div className="space-y-6">
+          <Badge
+            variant="outline"
+            className="bg-emerald-50/80 text-emerald-700 border-emerald-200 text-[11px] font-semibold tracking-widest uppercase px-4 py-1.5 rounded-full backdrop-blur-sm flex items-center gap-2 w-fit"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Smart Environmental Monitoring
+          </Badge>
+
+          <h1 className="text-5xl font-bold leading-[1.07] tracking-tight text-slate-900">
+            Track Pollution &amp;{" "}
+            <span className="text-emerald-600">Health</span>{" "}
+            in Real Time
+          </h1>
+
+          <p className="text-[16.5px] text-slate-500 leading-relaxed max-w-[480px]">
+            Proton combines wearable health monitoring, environmental sensors,
+            and AI analytics to help you understand how air quality impacts your wellbeing.
           </p>
-          <p>{currentUser}</p>
 
-          <h2 className="text-5xl font-extrabold leading-tight mb-6">
-            Track Pollution & Health in Real Time
-          </h2>
-
-          <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-            Proton combines wearable health monitoring, environmental
-            sensors, and AI analytics to help users understand how air quality
-            impacts their health.
-          </p>
-
-          <div className="flex gap-4">
-            <button className="bg-green-600 hover:bg-green-700 transition text-white px-6 py-3 rounded-2xl shadow-lg">
-              View Dashboard
-            </button>
-
-            <button className="border border-gray-300 hover:border-green-500 px-6 py-3 rounded-2xl transition">
+          <div className="flex gap-3 pt-1">
+            <Button
+              size="lg"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-200 font-semibold text-[15px] px-6 gap-2 transition-all hover:-translate-y-0.5"
+            >
+              View Dashboard →
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="rounded-2xl bg-white/60 backdrop-blur-md border-white/90 shadow-sm hover:bg-white/80 text-slate-700 font-medium text-[15px] px-6 transition-all hover:-translate-y-0.5"
+            >
               Learn More
-            </button>
+            </Button>
+          </div>
+
+          {/* Stat strip */}
+          <div className="flex items-center gap-8 pt-2">
+            {[["10k+", "Users"], ["99.9%", "Uptime"], ["<2s", "Latency"]].map(([val, lbl]) => (
+              <div key={lbl}>
+                <p className="text-lg font-bold text-slate-800 tracking-tight">{val}</p>
+                <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">{lbl}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Hero Card */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 border border-gray-100">
-          <div className="grid grid-cols-2 gap-5">
-            <div className="bg-green-100 p-5 rounded-2xl">
-              <p className="text-sm text-gray-500">Air Quality</p>
-              <h3 className="text-3xl font-bold text-green-700 mt-2">
-                42 AQI
-              </h3>
-              <p className="text-sm mt-2 text-green-600">Good</p>
-            </div>
-
-            <div className="bg-blue-100 p-5 rounded-2xl">
-              <p className="text-sm text-gray-500">CO Level</p>
-              <h3 className="text-3xl font-bold text-blue-700 mt-2">
-                9 ppm
-              </h3>
-              <p className="text-sm mt-2 text-blue-600">Safe</p>
-            </div>
-
-            <div className="bg-red-100 p-5 rounded-2xl">
-              <p className="text-sm text-gray-500">Heart Rate</p>
-              <h3 className="text-3xl font-bold text-red-700 mt-2">
-                78 BPM
-              </h3>
-              <p className="text-sm mt-2 text-red-600">Normal</p>
-            </div>
-
-            <div className="bg-yellow-100 p-5 rounded-2xl">
-              <p className="text-sm text-gray-500">PM2.5</p>
-              <h3 className="text-3xl font-bold text-yellow-700 mt-2">
-                18 μg/m³
-              </h3>
-              <p className="text-sm mt-2 text-yellow-700">Moderate</p>
-            </div>
-          </div>
+        {/* Metric cards */}
+        <div className="grid grid-cols-2 gap-4">
+          {metrics.map((m) => (
+            <MetricCard key={m.label} {...m} />
+          ))}
         </div>
       </section>
 
-      {/* Features Section */}
-      <section
-        id="features"
-        className="max-w-7xl mx-auto px-8 py-16"
-      >
-        <div className="text-center mb-14">
-          <h2 className="text-4xl font-bold mb-4">Core Features</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto">
+      <Separator className="max-w-7xl mx-auto opacity-20" />
+
+      {/* ── FEATURES ──────────────────────────────────────────────────────── */}
+      <section id="features" className="relative z-10 max-w-7xl mx-auto px-8 py-20">
+        <div className="text-center mb-14 space-y-3">
+          <Badge
+            variant="outline"
+            className="bg-white/60 backdrop-blur-sm text-slate-500 border-slate-200 text-[11px] font-semibold tracking-widest uppercase px-4 py-1 rounded-full"
+          >
+            Platform Capabilities
+          </Badge>
+          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Core Features</h2>
+          <p className="text-slate-500 max-w-lg mx-auto text-[15px] leading-relaxed">
             A complete environmental intelligence platform combining IoT,
             wearable technology, and analytics.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition">
-            <div className="text-5xl mb-4">⌚</div>
-            <h3 className="text-2xl font-semibold mb-3">
-              Smart Wearable
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Collects body temperature, heart rate, and health data to measure
-              environmental impact on the user.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition">
-            <div className="text-5xl mb-4">🌫️</div>
-            <h3 className="text-2xl font-semibold mb-3">
-              Pollution Detection
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Uses MQ-7 and dust sensors connected with ESP32 for real-time air
-              quality monitoring.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition">
-            <div className="text-5xl mb-4">📊</div>
-            <h3 className="text-2xl font-semibold mb-3">
-              Live Analytics
-            </h3>
-            <p className="text-gray-600 leading-relaxed">
-              Visualizes health and pollution trends with a responsive React
-              dashboard and cloud integration.
-            </p>
-          </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {features.map((f) => (
+            <FeatureCard key={f.title} {...f} />
+          ))}
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="px-8 py-20">
-        <div className="max-w-5xl mx-auto bg-green-600 rounded-3xl p-12 text-center text-white shadow-2xl">
-          <h2 className="text-4xl font-bold mb-5">
-            Build a Healthier Environment
-          </h2>
+      {/* ── CTA ───────────────────────────────────────────────────────────── */}
+      <section className="relative z-10 max-w-7xl mx-auto px-8 pb-24">
+        <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-emerald-600/90 to-teal-700/90 backdrop-blur-xl border border-white/20 shadow-2xl p-16 text-center">
+          <div className="absolute -top-20 -left-20 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
+          <div className="absolute -bottom-16 -right-16 w-56 h-56 rounded-full bg-emerald-300/20 blur-3xl" />
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
 
-          <p className="text-lg text-green-100 mb-8 max-w-2xl mx-auto">
-            Empowering people with real-time pollution awareness and health
-            insights through smart technology.
-          </p>
-
-          <button className="bg-white text-green-700 px-8 py-4 rounded-2xl font-semibold hover:scale-105 transition">
-            Open Dashboard
-          </button>
+          <div className="relative z-10 space-y-5">
+            <Badge
+              variant="outline"
+              className="bg-white/10 text-white/80 border-white/20 text-[11px] font-semibold tracking-widest uppercase px-4 py-1 rounded-full"
+            >
+              Join the Movement
+            </Badge>
+            <h2 className="text-4xl font-bold text-white tracking-tight">
+              Build a Healthier Environment
+            </h2>
+            <p className="text-emerald-100/80 text-[15px] max-w-md mx-auto leading-relaxed">
+              Empowering people with real-time pollution awareness and health insights
+              through smart technology.
+            </p>
+            <Button
+              size="lg"
+              className="bg-white text-emerald-700 hover:bg-white/90 font-semibold text-[15px] px-8 rounded-2xl shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl mt-2 gap-2"
+            >
+              Open Dashboard →
+            </Button>
+          </div>
         </div>
       </section>
     </div>
