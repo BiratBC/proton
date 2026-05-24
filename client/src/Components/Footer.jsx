@@ -7,10 +7,10 @@ const Footer = () =>  {
         <div>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-2xl bg-green-600 flex items-center justify-center font-bold text-lg">
-              E
+              P
             </div>
 
-            <h2 className="text-2xl font-bold">EcoPulse</h2>
+            <h2 className="text-2xl font-bold">Proton</h2>
           </div>
 
           <p className="text-gray-400 leading-relaxed">
@@ -56,7 +56,7 @@ const Footer = () =>  {
 
       {/* Bottom */}
       <div className="border-t border-gray-800 mt-12 pt-6 text-center text-gray-500 text-sm">
-        © 2026 EcoPulse. All rights reserved.
+        © 2026 Proton. All rights reserved.
       </div>
     </footer>
   );
