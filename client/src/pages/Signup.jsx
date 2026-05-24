@@ -9,8 +9,8 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
 
   const navigate = useNavigate();
 
@@ -18,6 +18,8 @@ export default function SignupPage() {
     setProgress((prev) => prev + 20);
     e.preventDefault();
     setLoading(true);
+    setError("");
+    setSuccess("");
 
     try {
       setProgress((prev) => prev + 30);
@@ -32,7 +34,6 @@ export default function SignupPage() {
         displayName: name,
       });
 
-      // Optional: store name locally (Firebase doesn't store name automatically here)
       console.log("User created:", user.uid, name);
 
       alert("Account created successfully!");
@@ -61,13 +62,26 @@ export default function SignupPage() {
         onLoaderFinished={() => setProgress(0)}
       />
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-10 border border-gray-100">
-        {/* Header */}
+
         <h1 className="text-3xl font-bold text-green-700 text-center mb-2">
           Create Account
         </h1>
+
         <p className="text-gray-500 text-center mb-8">
           Join Proton for smart environmental tracking
         </p>
+
+        {/* Feedback banners */}
+        {error && (
+          <div className="mb-5 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="mb-5 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-700 text-sm">
+            {success}
+          </div>
+        )}
 
         {/* Form */}
         <form className="space-y-5" onSubmit={handleSignup}>
@@ -106,7 +120,6 @@ export default function SignupPage() {
             />
           </div>
 
-          {/* Email sign-up button */}
           <button
             type="submit"
             disabled={loading}
@@ -133,4 +146,43 @@ export default function SignupPage() {
       </div>
     </div>
   );
+}
+
+// ── Spinner ───────────────────────────────────────────────────
+function Spinner({ color = "text-white" }) {
+  return (
+    <svg
+      className={`animate-spin h-4 w-4 ${color}`}
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+      />
+    </svg>
+  );
+}
+
+// ── Firebase error → human-readable message ───────────────────
+function friendlyError(code) {
+  const map = {
+    "auth/email-already-in-use": "An account with this email already exists.",
+    "auth/invalid-email": "Please enter a valid email address.",
+    "auth/weak-password": "Password must be at least 6 characters.",
+    "auth/network-request-failed": "Network error. Check your connection.",
+    "auth/too-many-requests": "Too many attempts. Please try again later.",
+    "auth/popup-blocked": "Popup was blocked. Allow popups for this site.",
+  };
+  return map[code] ?? "Something went wrong. Please try again.";
 }
