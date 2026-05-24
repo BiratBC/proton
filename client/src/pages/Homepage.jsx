@@ -22,7 +22,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 text-gray-800">
       {/* Navbar */}
       <nav className="flex items-center justify-between px-8 py-5 shadow-sm bg-white/80 backdrop-blur-md sticky top-0 z-50">
-        <h1 className="text-2xl font-bold text-green-700">EcoPulse</h1>
+        <h1 className="text-2xl font-bold text-green-700">Proton</h1>
 
         <div className="flex gap-6 text-sm font-medium">
           <a href="#features" className="hover:text-green-600 transition">
@@ -50,7 +50,7 @@ export default function HomePage() {
           </h2>
 
           <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-            EcoPulse combines wearable health monitoring, environmental
+            Proton combines wearable health monitoring, environmental
             sensors, and AI analytics to help users understand how air quality
             impacts their health.
           </p>
