@@ -1,5 +1,3 @@
-// Save this file as Home.jsx or Homepage.jsx inside your src folder
-// Example: src/pages/Home.jsx
 
 export default function HomePage() {
   return (
