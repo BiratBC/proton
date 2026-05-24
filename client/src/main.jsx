@@ -7,6 +7,8 @@ import HomePage from "./pages/Homepage.jsx";
 import LoginPage from "./pages/Login.jsx";
 import SignupPage from "./pages/Signup.jsx";
 import "./index.css";
+import { LoadingBarContainer } from "react-top-loading-bar";
+import { ToastContainer } from "react-toastify";
 
 const routing = createBrowserRouter([
   {
@@ -31,6 +33,20 @@ const routing = createBrowserRouter([
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <RouterProvider router={routing} />
-  </StrictMode>
+    <LoadingBarContainer>
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick={false}
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+      <RouterProvider router={routing} />
+    </LoadingBarContainer>
+  </StrictMode>,
 );
