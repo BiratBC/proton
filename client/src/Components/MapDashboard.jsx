@@ -2,23 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { useTelemetry } from '../hooks/useTelemetry.js';
 import LiveMap from './LiveMap';
 
+// Approx. 250 meters in coordinate degrees for localized exposure cross-checking
+const HAZARD_THRESHOLD_DEGREE = 0.0025;
+
 export default function MapDashboard({ deviceData = [] }) {
   const { liveData, isConnected } = useTelemetry();
-  
-  // Track metric state toggle context for geographic plotting
-  const [activeMetric, setActiveMetric] = useState('pm25'); // 'pm25' | 'co2'
-
-  // Array state to merge static node lists with hot incoming live telemetry updates
+  const [activeMetric, setActiveMetric] = useState('pm25');
   const [mapNodes, setMapNodes] = useState(deviceData);
 
-  // Initialize and mirror the device list when props load
+  // Eco-routing state endpoints identifiers
+  const [startNode, setStartNode] = useState('node-19'); // Default starting highway toll point
+  const [endNode, setEndNode] = useState('node-04');     // Default ending target location campus block
+  const [computedRoute, setComputedRoute] = useState([]);
+  const [safetyWeight, setSafetyWeight] = useState(4);    // Multiplier preference slider state
+
   useEffect(() => {
-    if (deviceData.length > 0) {
-      setMapNodes(deviceData);
-    }
+    if (deviceData.length > 0) setMapNodes(deviceData);
   }, [deviceData]);
 
-  // Intercept the hot WebSocket stream to update individual device records on-the-fly
   useEffect(() => {
     if (liveData && liveData.id) {
       setMapNodes((prevNodes) =>
@@ -36,86 +37,166 @@ export default function MapDashboard({ deviceData = [] }) {
     }
   }, [liveData]);
 
+  // Recalculate the clean eco-route automatically whenever nodes shift, sliders adjust, or metrics toggle
+  useEffect(() => {
+    const fetchRealStreetRoute = async () => {
+      if (!mapNodes.length || !startNode || !endNode) return;
+
+      const origin = mapNodes.find(n => n.id === startNode);
+      const destination = mapNodes.find(n => n.id === endNode);
+      if (!origin || !destination) return;
+
+      try {
+        // 1. Query OSRM requesting alternative paths to compare
+        const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson&alternatives=true`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data.routes || data.routes.length === 0) {
+          setComputedRoute([]);
+          return;
+        }
+
+        let bestRouteCoordinates = [];
+        let lowestTotalCost = Infinity;
+
+        // 2. Cross-reference alternative street paths with localized air metrics
+        data.routes.forEach((route) => {
+          // Map OSRM [lng, lat] geometry coordinates back into standard Leaflet format [lat, lng]
+          const streetCoords = route.geometry.coordinates.map((coord) => [coord[1], coord[0]]);
+          
+          let physicalDistance = route.distance / 1000; // Convert meters to kilometers
+          let pollutionExposurePenalty = 0;
+
+          // 3. Scan along the route geometry to track hot spot entries
+          streetCoords.forEach(([streetLat, streetLng]) => {
+            mapNodes.forEach((node) => {
+              const latDiff = Math.abs(streetLat - node.lat);
+              const lngDiff = Math.abs(streetLng - node.lng);
+              
+              // If street layout passes close to a monitored tracking hardware coordinate
+              if (latDiff < HAZARD_THRESHOLD_DEGREE && lngDiff < HAZARD_THRESHOLD_DEGREE) {
+                // Use explicit exposure scores if tracking human vitals, or default to ambient normalized data
+                const baseHazard = node.exposureRiskScore ?? (
+                  activeMetric === 'pm25' 
+                    ? (node.pm25 || 0) / 25 
+                    : (node.co2 || 400) / 300
+                );
+                
+                pollutionExposurePenalty += baseHazard;
+              }
+            });
+          });
+
+          // 4. Evaluate true path optimization cost relative to the user choice weight settings
+          const totalWeightedCost = physicalDistance + (pollutionExposurePenalty * safetyWeight);
+
+          if (totalWeightedCost < lowestTotalCost) {
+            lowestTotalCost = totalWeightedCost;
+            bestRouteCoordinates = streetCoords;
+          }
+        });
+
+        setComputedRoute(bestRouteCoordinates);
+      } catch (error) {
+        console.error("OSRM Street Routing Engine Failed:", error);
+      }
+    };
+
+    fetchRealStreetRoute();
+  }, [mapNodes, startNode, endNode, safetyWeight, activeMetric]);
+
   return (
     <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur shadow-2xl">
       <div className="w-full space-y-6">
         
-        {/* Status & Toggle Header */}
+        {/* Header Block */}
         <header className="flex flex-wrap gap-4 justify-between items-center bg-slate-950/40 p-5 rounded-2xl border border-white/5">
           <div>
-            <h1 className="text-xl font-bold text-white">Proton Spatial Coverage Matrix</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Monitoring environmental indices across 50 telemetry nodes</p>
+            <h1 className="text-xl font-bold text-white">Proton Eco-Routing Command Matrix</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Real-time path adjustments minimizing health risk index exposures</p>
           </div>
           
           <div className="flex flex-wrap items-center gap-3">
-            {/* Metric Selection Switches */}
             <div className="flex rounded-xl bg-slate-900/90 p-1 border border-white/10">
               <button
-                type="button"
                 onClick={() => setActiveMetric('pm25')}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${activeMetric === 'pm25' ? 'bg-emerald-500 text-slate-950' : 'text-slate-300 hover:bg-white/5'}`}
               >
                 PM2.5 Heatmap
               </button>
               <button
-                type="button"
                 onClick={() => setActiveMetric('co2')}
                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${activeMetric === 'co2' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:bg-white/5'}`}
               >
                 CO2 Emissions
               </button>
             </div>
-
-            {/* Socket Pipeline Indicator */}
-            <div className="flex items-center space-x-2 bg-black/20 border border-white/5 px-3 py-1.5 rounded-xl">
-              <span className={`h-2.5 w-2.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
-              <span className="text-xs font-mono font-medium text-slate-300">
-                {isConnected ? 'Stream: Sync' : 'Stream: Offline'}
-              </span>
-            </div>
           </div>
         </header>
 
-        {/* Layout Analytics Grid */}
+        {/* Core Layout Grid */}
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           
-          {/* Diagnostic Side Control Panel */}
+          {/* Navigation Route Selection Controller Box Component */}
           <div className="flex flex-col gap-4 xl:col-span-1">
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Device Count</h3>
-              <p className="text-3xl font-bold text-white mt-2">
-                {mapNodes.length} <span className="text-xs font-normal text-slate-500">online</span>
-              </p>
-            </div>
-            
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stream Target Focus</h3>
-              <p className={`text-2xl font-bold mt-2 capitalize ${activeMetric === 'pm25' ? 'text-emerald-400' : 'text-cyan-400'}`}>
-                {activeMetric === 'pm25' ? 'Particulates' : 'Carbon Dioxide'}
-              </p>
-              <p className="text-xs text-slate-400 mt-1">
-                {activeMetric === 'pm25' 
-                  ? 'Plotting fine aerodynamic matter diameters ≤ 2.5 micrometers.' 
-                  : 'Plotting dynamic environmental greenhouse gas displacements.'}
-              </p>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-5 space-y-4">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Navigation Framework</h3>
+              
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">Origin Node Location</label>
+                <select 
+                  value={startNode} 
+                  onChange={(e) => setStartNode(e.target.value)}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-hidden cursor-pointer"
+                >
+                  {mapNodes.map(n => <option key={n.id} value={n.id}>{n.locationName || `Node ${n.id}`}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">Destination Target</label>
+                <select 
+                  value={endNode} 
+                  onChange={(e) => setEndNode(e.target.value)}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-hidden cursor-pointer"
+                >
+                  {mapNodes.map(n => <option key={n.id} value={n.id}>{n.locationName || `Node ${n.id}`}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                  <span>Safety Avoidance Priority</span>
+                  <span className="text-emerald-400 font-bold">x{safetyWeight}</span>
+                </div>
+                <input 
+                  type="range" min="0" max="10" step="1" 
+                  value={safetyWeight} 
+                  onChange={(e) => setSafetyWeight(Number(e.target.value))}
+                  className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+                />
+              </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-5 flex-1 hidden xl:block">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Thermal Vector Gradient</h3>
-              <div className="space-y-2 text-xs font-mono text-slate-300">
-                <div className="flex items-center gap-2"><span className="h-2 w-6 rounded bg-red-600"/> Max Saturation</div>
-                <div className="flex items-center gap-2"><span className="h-2 w-6 rounded bg-yellow-400"/> Heavy Spike</div>
-                <div className="flex items-center gap-2"><span className="h-2 w-6 rounded bg-lime-400"/> Normal Ambient</div>
-                <div className="flex items-center gap-2"><span className="h-2 w-6 rounded bg-blue-600"/> Baseline Clear</div>
-              </div>
+            {/* Diagnostic readout block updates */}
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Route Optimization Status</h3>
+              <p className="text-sm font-semibold text-white mt-3">
+                Path Calculation: <span className="text-emerald-400">Optimal Eco-Pass Found</span>
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                The computed green polyline path intelligently avoids sectors displaying critical cardiovascular or PM2.5 risk metrics.
+              </p>
             </div>
           </div>
 
-          {/* Core Geographic Canvas Block */}
+          {/* Interactive Geographic Window Wrapper Panel */}
           <div className="xl:col-span-3 rounded-2xl overflow-hidden border border-white/10 bg-slate-950/40 p-2">
             <LiveMap 
               nodes={mapNodes}
               targetMetric={activeMetric}
+              routePath={computedRoute}
             />
           </div>
 

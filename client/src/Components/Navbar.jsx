@@ -43,8 +43,10 @@ const Navbar = () => {
         }`}
       >
         <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
-          <button className="text-xl font-bold text-emerald-700 tracking-tight cursor-pointer" onClick = { () => navigate("/") }>
-            Proton
+          
+          <button className="text-xl font-bold text-emerald-700 tracking-tight cursor-pointer flex items-center gap-2" onClick = { () => navigate("/") }>
+            <img src="logo.svg" alt="" width={48} height={48}/>
+            <p>Proton</p>
           </button>
 
           <NavigationMenu>
@@ -66,7 +68,7 @@ const Navbar = () => {
           {currentUser ? (
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-slate-600">
-                👋 {currentUser}
+                {currentUser}
               </span>
               <div className="w-8 h-8 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 font-semibold text-sm">
                 {currentUser.charAt(0).toUpperCase()}

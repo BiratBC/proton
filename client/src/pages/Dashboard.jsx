@@ -8,6 +8,7 @@ import {
   limit,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { deviceLocationsData } from "../lib/dummyData.js";
 
 import { auth } from "../firebase.js";
 
@@ -16,12 +17,7 @@ const getSocketUrl = () => import.meta.env.VITE_WS_URL || DEFAULT_WS_URL;
 
 export default function RealtimeVerifier() {
   // Array of 50 active sensor nodes mapped to your frontend state
-const deviceLocationsData = [
-  { id: "node-01", lat: 27.6194, lng: 85.5385, pm25: 14.2, co2: 410, locationName: "Grid Sector Alpha" },
-  { id: "node-02", lat: 27.6210, lng: 85.5412, pm25: 85.6, co2: 780, locationName: "Industrial Perimeter" },
-  { id: "node-03", lat: 27.6172, lng: 85.5350, pm25: 120.4, co2: 1150, locationName: "Highway Intersection" },
-  // ... up to 50 devices
-];
+
   const [status, setStatus] = useState("idle");
   const [messages, setMessages] = useState([]);
   const [lastPayload, setLastPayload] = useState(null);
@@ -112,9 +108,9 @@ const deviceLocationsData = [
         q,
         (snapshot) => {
           if (!snapshot.empty) {
-            const latest = snapshot.docs[0].data();
-
-            console.log("Latest health data:", latest);
+            const latest = snapshot.docs
+              .sort((a, b) => b.id.localeCompare(a.id))[0]
+              .data();
 
             setSensorData(latest);
             setDbStatus("live");
@@ -358,7 +354,7 @@ const deviceLocationsData = [
         )}
 
         {/* ── Leaflet OpenStreetMap Context Component ───────────────────── */}
-        <MapDashboard liveData={lastPayload} deviceData = {deviceLocationsData} />
+        <MapDashboard liveData={lastPayload} deviceData={deviceLocationsData} />
       </div>
     </div>
   );

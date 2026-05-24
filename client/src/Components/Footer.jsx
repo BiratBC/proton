@@ -18,9 +18,7 @@ const Footer = () => {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md flex items-center justify-center font-bold text-lg text-emerald-300 shadow-inner">
-                P
-              </div>
+              <img src="logo.svg" alt="" width={48} height={48}/>
               <h2 className="text-2xl font-bold text-white tracking-tight">Proton</h2>
             </div>
             <p className="text-white/50 leading-relaxed text-sm">
@@ -72,9 +70,9 @@ const Footer = () => {
             </h3>
             <div className="flex flex-col gap-3">
               {[
-                { icon: "🏆", text: "24-Hour Hackathon Project" },
-                { icon: "⚛️",  text: "Built with React + Tailwind CSS" },
-                { icon: "📡", text: "Powered by ESP32 & IoT Sensors" },
+                {text: "24-Hour Hackathon Project" },
+                {text: "Built with React + Tailwind CSS" },
+                {text: "Powered by ESP32 & IoT Sensors" },
               ].map(({ icon, text }) => (
                 <div
                   key={text}
@@ -92,7 +90,6 @@ const Footer = () => {
         <div className="mt-12 pt-6 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-3">
           <p className="text-white/30 text-sm">© 2026 Proton. All rights reserved.</p>
           <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-white/30 text-xs font-medium">All systems operational</span>
           </div>
         </div>
