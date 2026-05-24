@@ -47,13 +47,6 @@ export default function SignupPage() {
     setLoading(false);
   };
 
-  const handleGoogleSignup = async () => {
-    // TODO
-  };
-
-  const googleLoading = async (params) => {
-    // TODO
-  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 flex items-center justify-center px-6">
       <LoadingBar
