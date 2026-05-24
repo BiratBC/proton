@@ -1,5 +1,23 @@
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { useState } from "react";
+
 
 export default function HomePage() {
+  const [currentUser, setCurrentUser] = useState("")
+  const auth = getAuth();
+  onAuthStateChanged(auth, (user) => {
+  if (user) {
+    // User is signed in, see docs for a list of available properties
+    const uid = user.uid;
+    setCurrentUser(user.displayName);
+    console.log(user);
+    
+  } else {
+    // User is signed out
+    console.log("No user is signed in.");
+  }
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 text-gray-800">
       {/* Navbar */}
@@ -25,6 +43,7 @@ export default function HomePage() {
           <p className="text-green-600 font-semibold mb-3 uppercase tracking-wide">
             Smart Environmental Monitoring
           </p>
+          <p>{currentUser}</p>
 
           <h2 className="text-5xl font-extrabold leading-tight mb-6">
             Track Pollution & Health in Real Time

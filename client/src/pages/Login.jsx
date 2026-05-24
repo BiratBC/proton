@@ -2,6 +2,7 @@ import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,10 +18,10 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
 
-      alert("Login successful!");
+      toast.success("Login Successfull")
       navigate("/");
     } catch (error) {
-      alert(error.message);
+      toast.error(error.message)
     }
 
     setLoading(false);
