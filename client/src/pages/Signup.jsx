@@ -1,64 +1,36 @@
-import { useState, useEffect } from "react";
-import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
-  createUserWithEmailAndPassword,
-  updateProfile,
-} from "firebase/auth";
-import { Navigate, useNavigate } from "react-router-dom";
-
-// ── Firebase config ──────────────────────────────────────────
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
-
-// ── Helper: send ID token to Express backend ─────────────────
-async function sendTokenToBackend(user) {
-  const idToken = await user.getIdToken();
-  const res = await fetch("/auth/google", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ idToken }),
-  });
-  if (!res.ok) throw new Error("Backend verification failed");
-  return res.json();
-}
-
-// ── Google logo SVG ──────────────────────────────────────────
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <path
-        d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"
-        fill="#4285F4"
-      />
-      <path
-        d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"
-        fill="#34A853"
-      />
-      <path
-        d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"
-        fill="#FBBC05"
-      />
-      <path
-        d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"
-        fill="#EA4335"
-      />
-    </svg>
-  );
-}
-
 export default function SignupPage() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      const user = userCredential.user;
+
+      // Optional: store name locally (Firebase doesn't store name automatically here)
+      console.log("User created:", user.uid, name);
+
+      alert("Account created successfully!");
+      navigate("/");
+    } catch (error) {
+      alert(error.message);
+    }
+
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 flex items-center justify-center px-6">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-10 border border-gray-100">
@@ -83,17 +55,15 @@ export default function SignupPage() {
         )}
 
         {/* Form */}
-        <form className="space-y-5" onSubmit={handleEmailSignup}>
+        <form className="space-y-5">
+
           <div>
             <label className="text-sm text-gray-600">Full Name</label>
             <input
               type="text"
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              required
               className="w-full mt-2 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
               placeholder="Enter your name"
+              required
             />
           </div>
 
@@ -101,12 +71,9 @@ export default function SignupPage() {
             <label className="text-sm text-gray-600">Email</label>
             <input
               type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              required
               className="w-full mt-2 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
               placeholder="Enter your email"
+              required
             />
           </div>
 
@@ -114,28 +81,17 @@ export default function SignupPage() {
             <label className="text-sm text-gray-600">Password</label>
             <input
               type="password"
-              name="password"
-              value={form.password}
-              onChange={handleChange}
-              required
               className="w-full mt-2 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-green-500"
-              placeholder="Create a password (min. 6 characters)"
+              placeholder="Create a password"
             />
           </div>
 
           {/* Email sign-up button */}
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition shadow-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition shadow-lg"
           >
-            {loading ? (
-              <>
-                <Spinner /> Creating account...
-              </>
-            ) : (
-              "Sign Up"
-            )}
+            Sign Up
           </button>
         </form>
 
