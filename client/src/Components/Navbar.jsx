@@ -16,10 +16,23 @@ const Navbar = () => {
 
       {/* Links */}
       <div className="hidden md:flex items-center gap-8 text-sm font-medium">
-        <a href="#home" className="hover:text-green-600 transition">Home</a>
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="rounded-xl bg-emerald-50 px-3 py-1.5 text-emerald-700 transition hover:bg-emerald-100"
+        >
+          Home
+        </button>
         <a href="#features" className="hover:text-green-600 transition">Features</a>
-        <a href="#dashboard" className="hover:text-green-600 transition">Dashboard</a>
+        <button
+          type="button"
+          onClick={() => navigate("/dashboard")}
+          className="rounded-xl bg-emerald-50 px-3 py-1.5 text-emerald-700 transition hover:bg-emerald-100"
+        >
+          Dashboard
+        </button>
         <a href="#about" className="hover:text-green-600 transition">About</a>
+        
       </div>
 
       {/* Buttons */}

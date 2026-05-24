@@ -1,53 +1,34 @@
 import express from "express"
 import cors from "cors"
-import cookieParser from "cookie-parser";
-import admin from "./firebase/firebaseAdmin.js";
+import http from "http"
+import dotenv from 'dotenv'
+// import cookieParser from "cookie-parser";
+
+
 const PORT = 5000;
 
+
+import { requireAuth } from './middleware/authMiddleware.js';
+import { initializeWebSocket } from "./services/websocket.js";
+
+dotenv.config();
+
 const app = express();
-
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(cors());
 app.use(express.json());
-app.use(cookieParser());
-app.use((req, res, next) => {
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-  next();
+
+// Create standard HTTP server wrapper for Express
+const server = http.createServer(app);
+
+// Initialize our modular real-time analytics and WebSocket server
+initializeWebSocket(server);
+
+// Example REST Endpoint using your existing auth middleware
+app.get('/api/protected-route', requireAuth, (req, res) => {
+  res.json({ message: "Verified route accessed successfully." });
 });
 
-//google OAuth
-app.post("/auth/google", async (req, res) => {
-  const { idToken } = req.body;
-  try {
-    const decoded = await admin.auth().verifyIdToken(idToken);
-
-    // Set a secure session cookie (optional but recommended)
-    res.cookie("session", idToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 1000, // 1 hour
-    });
-
-    res.json({ uid: decoded.uid, email: decoded.email, name: decoded.name });
-  } catch (err) {
-    res.status(401).json({ error: "Invalid token" });
-  }
-});
-
-
-//example
-app.get("/api/profile", async (req, res) => {
-  const token = req.cookies.session;
-  if (!token) return res.status(401).json({ error: "Not authenticated" });
-
-  try {
-    const decoded = await admin.auth().verifyIdToken(token);
-    res.json({ uid: decoded.uid, email: decoded.email });
-  } catch {
-    res.status(401).json({ error: "Session expired" });
-  }
-});
-
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server has started on port ${PORT}`);
     
 })
