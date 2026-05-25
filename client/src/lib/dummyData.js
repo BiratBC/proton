@@ -1,52 +1,126 @@
-export const deviceLocationsData = [
-  { id: "node-01", lat: 27.6194, lng: 85.5385, pm25: 14.2, co2: 410, locationName: "Grid Sector Alpha" },
-  { id: "node-02", lat: 27.6210, lng: 85.5412, pm25: 85.6, co2: 780, locationName: "Industrial Perimeter" },
-  { id: "node-03", lat: 27.6172, lng: 85.5350, pm25: 120.4, co2: 1150, locationName: "Highway Intersection" },
-  { id: "node-04", lat: 27.6235, lng: 85.5391, pm25: 22.1, co2: 435, locationName: "North Campus Block" },
-  { id: "node-05", lat: 27.6150, lng: 85.5321, pm25: 95.3, co2: 890, locationName: "Brick Kiln Corridor" },
-  { id: "node-06", lat: 27.6181, lng: 85.5445, pm25: 45.8, co2: 560, locationName: "East Residential Ridge" },
-  { id: "node-07", lat: 27.6251, lng: 85.5362, pm25: 12.5, co2: 395, locationName: "Pine Forest Reserve" },
-  { id: "node-08", lat: 27.6122, lng: 85.5378, pm25: 145.2, co2: 1320, locationName: "Heavy Freight Depot" },
-  { id: "node-09", lat: 27.6205, lng: 85.5310, pm25: 62.1, co2: 680, locationName: "Downtown Market Hub" },
-  { id: "node-10", lat: 27.6163, lng: 85.5402, pm25: 31.4, co2: 485, locationName: "Central Health Complex" },
-  { id: "node-11", lat: 27.6222, lng: 85.5431, pm25: 18.7, co2: 420, locationName: "Green Valley Eco Park" },
-  { id: "node-12", lat: 27.6141, lng: 85.5460, pm25: 88.4, co2: 810, locationName: "South Transit Ring Road" },
-  { id: "node-13", lat: 27.6268, lng: 85.5415, pm25: 15.1, co2: 405, locationName: "North Ridge Watershed" },
-  { id: "node-14", lat: 27.6110, lng: 85.5342, pm25: 112.9, co2: 1045, locationName: "Manufacturing Sector C" },
-  { id: "node-15", lat: 27.6199, lng: 85.5358, pm25: 53.2, co2: 615, locationName: "Civic Center Plaza" },
-  { id: "node-16", lat: 27.6242, lng: 85.5334, pm25: 25.6, co2: 450, locationName: "West Suburb Gate" },
-  { id: "node-17", lat: 27.6133, lng: 85.5429, pm25: 74.1, co2: 730, locationName: "Commercial Boulevard" },
-  { id: "node-18", lat: 27.6218, lng: 85.5472, pm25: 13.8, co2: 412, locationName: "Heliport Clear Zone" },
-  { id: "node-19", lat: 27.6179, lng: 85.5295, pm25: 132.6, co2: 1210, locationName: "Main Highway Toll" },
-  { id: "node-20", lat: 27.6260, lng: 85.5450, pm25: 20.4, co2: 440, locationName: "Botanical Sanctuary" },
-  { id: "node-21", lat: 27.6158, lng: 85.5371, pm25: 42.1, co2: 525, locationName: "Midtown Residential" },
-  { id: "node-22", lat: 27.6201, lng: 85.5420, pm25: 38.5, co2: 510, locationName: "Science & Tech Park" },
-  { id: "node-23", lat: 27.6115, lng: 85.5399, pm25: 105.7, co2: 980, locationName: "Smelter Boundary" },
-  { id: "node-24", lat: 27.6248, lng: 85.5408, pm25: 16.3, co2: 418, locationName: "Reservoir Viewpoint" },
-  { id: "node-25", lat: 27.6186, lng: 85.5339, pm25: 69.4, co2: 705, locationName: "Old Town Market Cross" },
-  { id: "node-26", lat: 27.6139, lng: 85.5312, pm25: 91.2, co2: 865, locationName: "Bus Terminal Junction" },
-  { id: "node-27", lat: 27.6229, lng: 85.5351, pm25: 24.7, co2: 460, locationName: "Sports Complex Fields" },
-  { id: "node-28", lat: 27.6169, lng: 85.5479, pm25: 50.3, co2: 590, locationName: "East Agro Farm Ring" },
-  { id: "node-29", lat: 27.6275, lng: 85.5380, pm25: 11.9, co2: 390, locationName: "High Altitude Station" },
-  { id: "node-30", lat: 27.6102, lng: 85.5365, pm25: 158.4, co2: 1410, locationName: "Industrial Core Stack" },
-  { id: "node-31", lat: 27.6191, lng: 85.5405, pm25: 29.8, co2: 470, locationName: "Staff Quarter Gardens" },
-  { id: "node-32", lat: 27.6213, lng: 85.5344, pm25: 57.5, co2: 630, locationName: "Bank Square Avenue" },
-  { id: "node-33", lat: 27.6147, lng: 85.5441, pm25: 79.2, co2: 755, locationName: "Auto Repair Strip" },
-  { id: "node-34", lat: 27.6255, lng: 85.5439, pm25: 14.8, co2: 408, locationName: "Orchard Buffer Zone" },
-  { id: "node-35", lat: 27.6128, lng: 85.5330, pm25: 124.1, co2: 1195, locationName: "Material Processing B" },
-  { id: "node-36", lat: 27.6175, lng: 85.5319, pm25: 81.6, co2: 795, locationName: "West Bazar Thoroughfare" },
-  { id: "node-37", lat: 27.6239, lng: 85.5373, pm25: 21.3, co2: 430, locationName: "University Main Gate" },
-  { id: "node-38", lat: 27.6155, lng: 85.5412, pm25: 47.2, co2: 540, locationName: "Community Hall Ward" },
-  { id: "node-39", lat: 27.6208, lng: 85.5461, pm25: 23.5, co2: 445, locationName: "North East Residential" },
-  { id: "node-40", lat: 27.6095, lng: 85.5388, pm25: 138.9, co2: 1290, locationName: "Cement Mixing Yard" },
-  { id: "node-41", lat: 27.6183, lng: 85.5369, pm25: 35.1, co2: 495, locationName: "Library Square Walk" },
-  { id: "node-42", lat: 27.6225, lng: 85.5325, pm25: 40.6, co2: 520, locationName: "Food Court Arcade" },
-  { id: "node-43", lat: 27.6136, lng: 85.5471, pm25: 66.3, co2: 690, locationName: "Warehousing Outer Grid" },
-  { id: "node-44", lat: 27.6264, lng: 85.5349, pm25: 13.1, co2: 398, locationName: "Hilltop Observatory" },
-  { id: "node-45", lat: 27.6119, lng: 85.5315, pm25: 118.5, co2: 1115, locationName: "Heavy Machinery Park" },
-  { id: "node-46", lat: 27.6166, lng: 85.5348, pm25: 71.9, co2: 715, locationName: "Retail Shopping Hub" },
-  { id: "node-47", lat: 27.6245, lng: 85.5424, pm25: 17.4, co2: 425, locationName: "Ecology Research Base" },
-  { id: "node-48", lat: 27.6152, lng: 85.5392, pm25: 33.7, co2: 480, locationName: "Primary School Circle" },
-  { id: "node-49", lat: 27.6202, lng: 85.5449, pm25: 26.2, co2: 462, locationName: "Innovation Incubator" },
-  { id: "node-50", lat: 27.6125, lng: 85.5452, pm25: 84.3, co2: 805, locationName: "South Scrap Yard Grid" }
+const OPENWEATHER_API_BASE = "https://api.openweathermap.org/data/2.5";
+const OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY?.trim();
+
+const DEFAULT_OPENWEATHER_POINTS = [
+  { id: "ow-01", lat: 27.6194, lng: 85.5385 },
+  { id: "ow-02", lat: 27.6210, lng: 85.5412 },
+  { id: "ow-03", lat: 27.6172, lng: 85.5350 },
+  { id: "ow-04", lat: 27.6235, lng: 85.5391 },
+  { id: "ow-05", lat: 27.6150, lng: 85.5321 },
+  { id: "ow-06", lat: 27.6181, lng: 85.5445 },
+  { id: "ow-07", lat: 27.6251, lng: 85.5362 },
+  { id: "ow-08", lat: 27.6122, lng: 85.5378 },
+  { id: "ow-09", lat: 27.6205, lng: 85.5310 },
+  { id: "ow-10", lat: 27.6163, lng: 85.5402 },
 ];
+
+const fallbackDeviceLocationsData = DEFAULT_OPENWEATHER_POINTS.map((point, index) => ({
+  id: point.id,
+  lat: point.lat,
+  lng: point.lng,
+  pm25: [14.2, 85.6, 120.4, 22.1, 95.3, 45.8, 12.5, 145.2, 62.1, 31.4][index] ?? 30,
+  co2: [410, 780, 1150, 435, 890, 560, 395, 1320, 680, 485][index] ?? 500,
+  co: [0.6, 1.2, 1.8, 0.7, 1.4, 0.9, 0.5, 2.1, 1.0, 0.8][index] ?? 0.8,
+  locationName: `OpenWeather Fallback ${index + 1} (${point.lat.toFixed(3)}, ${point.lng.toFixed(3)})`,
+}));
+
+function buildWeatherUrl(lat, lng) {
+  return `${OPENWEATHER_API_BASE}/weather?lat=${lat}&lon=${lng}&appid=${OPENWEATHER_API_KEY}&units=metric`;
+}
+
+function buildAirPollutionUrl(lat, lng) {
+  return `${OPENWEATHER_API_BASE}/air_pollution?lat=${lat}&lon=${lng}&appid=${OPENWEATHER_API_KEY}`;
+}
+
+async function fetchWithTimeout(url, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenWeather request failed: ${response.status}`);
+    }
+
+    return response.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function buildLocationName(weatherData, point, index) {
+  const lat = Number(point.lat).toFixed(3);
+  const lng = Number(point.lng).toFixed(3);
+  const suffix = ` (${lat}, ${lng})`;
+
+  if (!weatherData) {
+    return `OpenWeather Point ${index + 1}${suffix}`;
+  }
+
+  const cityName = weatherData.name?.trim();
+  const country = weatherData.sys?.country?.trim();
+
+  if (cityName && country) {
+    return `${cityName}, ${country}${suffix}`;
+  }
+
+  return `${cityName || `OpenWeather Point ${index + 1}`}${suffix}`;
+}
+
+function estimateCo2(coValue) {
+  if (!Number.isFinite(coValue)) {
+    return 400;
+  }
+
+  return Math.min(1500, Math.max(400, coValue * 1.2));
+}
+
+export async function fetchDeviceLocationsData() {
+  if (!OPENWEATHER_API_KEY) {
+    console.warn("Missing VITE_OPENWEATHER_API_KEY. Falling back to static heatmap points.");
+    return fallbackDeviceLocationsData;
+  }
+
+  const results = await Promise.allSettled(
+    DEFAULT_OPENWEATHER_POINTS.map(async (point, index) => {
+      const [weatherData, pollutionData] = await Promise.allSettled([
+        fetchWithTimeout(buildWeatherUrl(point.lat, point.lng)),
+        fetchWithTimeout(buildAirPollutionUrl(point.lat, point.lng)),
+      ]);
+
+      const weather = weatherData.status === "fulfilled" ? weatherData.value : null;
+      const air = pollutionData.status === "fulfilled" ? pollutionData.value : null;
+      const components = air?.list?.[0]?.components ?? {};
+
+      const pm25 = Number.isFinite(Number(components.pm2_5)) ? Number(components.pm2_5) : 0;
+      const co = Number.isFinite(Number(components.co)) ? Number(components.co) : 0;
+
+      return {
+        id: point.id,
+        lat: point.lat,
+        lng: point.lng,
+        pm25,
+        co,
+        co2: estimateCo2(co),
+        locationName: buildLocationName(weather, point, index),
+      };
+    }),
+  );
+
+  const validResults = results
+    .filter((result) => result.status === "fulfilled")
+    .map((result) => result.value);
+
+  if (validResults.length === 0) {
+    console.warn("OpenWeather fetch failed for all points. Falling back to static heatmap points.");
+    return fallbackDeviceLocationsData;
+  }
+
+  return validResults;
+}
+
+export const deviceLocationsData = fallbackDeviceLocationsData;

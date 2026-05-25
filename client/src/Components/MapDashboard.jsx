@@ -122,7 +122,67 @@ function getRouteCandidateNodes(nodes, livePayload) {
   return [...nodes, liveNode];
 }
 
-export default function MapDashboard({ deviceData = [], liveData = null }) {
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function computeSafetyWeight({ heartRate, spo2, co, pm25 }) {
+  const heartRateValue = Number(heartRate);
+  const spo2Value = Number(spo2);
+  const coValue = Number(co);
+  const pm25Value = Number(pm25);
+
+  let weight = 4;
+
+  if (Number.isFinite(heartRateValue)) {
+    if (heartRateValue >= 110) {
+      weight += 3;
+    } else if (heartRateValue >= 95) {
+      weight += 2;
+    } else if (heartRateValue >= 80) {
+      weight += 1;
+    }
+  }
+
+  if (Number.isFinite(spo2Value)) {
+    if (spo2Value < 90) {
+      weight += 4;
+    } else if (spo2Value < 94) {
+      weight += 3;
+    } else if (spo2Value < 97) {
+      weight += 1.5;
+    }
+  }
+
+  if (Number.isFinite(coValue)) {
+    if (coValue >= 20) {
+      weight += 4;
+    } else if (coValue >= 10) {
+      weight += 2.5;
+    } else if (coValue >= 5) {
+      weight += 1;
+    }
+  }
+
+  if (Number.isFinite(pm25Value)) {
+    if (pm25Value >= 75) {
+      weight += 4;
+    } else if (pm25Value >= 50) {
+      weight += 2.5;
+    } else if (pm25Value >= 25) {
+      weight += 1;
+    }
+  }
+
+  return Number(clamp(weight, 0, 20).toFixed(2));
+}
+
+export default function MapDashboard({
+  deviceData = [],
+  liveData = null,
+  userVitals = {},
+  environment = {},
+}) {
   const { liveData: streamedLiveData } = useTelemetry();
   const currentLiveData = liveData ?? streamedLiveData;
   const [activeMetric, setActiveMetric] = useState('pm25');
@@ -132,30 +192,103 @@ export default function MapDashboard({ deviceData = [], liveData = null }) {
   const [startNode, setStartNode] = useState('node-19'); // Default starting highway toll point
   const [endNode, setEndNode] = useState('node-04');     // Default ending target location campus block
   const [computedRoute, setComputedRoute] = useState([]);
-  const [safetyWeight, setSafetyWeight] = useState(4);    // Multiplier preference slider state
+  const safetyWeight = useMemo(() => {
+    const resolvedEnvironment = {
+      co: environment.co ?? currentLiveData?.co ?? null,
+      pm25: environment.pm25 ?? currentLiveData?.pm25 ?? null,
+    };
+
+    return computeSafetyWeight({
+      heartRate: userVitals.heartRate,
+      spo2: userVitals.spo2,
+      co: resolvedEnvironment.co,
+      pm25: resolvedEnvironment.pm25,
+    });
+  }, [currentLiveData, environment.co, environment.pm25, userVitals.heartRate, userVitals.spo2]);
 
   useEffect(() => {
     if (deviceData.length > 0) setMapNodes(deviceData);
   }, [deviceData]);
 
-  const displayNodes = useMemo(() => {
+  useEffect(() => {
+    if (!mapNodes.length) {
+      return;
+    }
+
+    const validIds = mapNodes.map((node) => node.id).filter(Boolean);
+    const firstId = validIds[0];
+    const secondId = validIds[1] ?? firstId;
+
+    setStartNode((current) => (validIds.includes(current) ? current : firstId));
+    setEndNode((current) => (validIds.includes(current) ? current : secondId));
+  }, [mapNodes]);
+
+  const heatmapNodes = useMemo(() => {
+    if (deviceData.length > 0) {
+      return deviceData;
+    }
+
+    return mapNodes;
+  }, [deviceData, mapNodes]);
+
+  const markerNodes = useMemo(() => {
     const liveMarkerNode = buildLiveMarkerNode(currentLiveData);
-    return liveMarkerNode ? [liveMarkerNode] : mapNodes;
-  }, [currentLiveData, mapNodes]);
+
+    if (!liveMarkerNode) {
+      return [];
+    }
+
+    return [liveMarkerNode];
+  }, [currentLiveData]);
+
+  const routeMarkers = useMemo(() => {
+    const routeMarkerConfigs = [
+      {
+        id: startNode,
+        label: "A",
+        color: "#0f59ff",
+        description: "Origin Node Location",
+      },
+      {
+        id: endNode,
+        label: "B",
+        color: "#16a34a",
+        description: "Destination Target",
+      },
+    ];
+
+    return routeMarkerConfigs
+      .map((config) => {
+        const node = heatmapNodes.find((item) => item.id === config.id);
+
+        if (!node || !node.lat || !node.lng) {
+          return null;
+        }
+
+        return {
+          ...config,
+          lat: node.lat,
+          lng: node.lng,
+          locationName: node.locationName || node.id,
+        };
+      })
+      .filter(Boolean);
+  }, [heatmapNodes, startNode, endNode]);
 
   useEffect(() => {
     if (currentLiveData && currentLiveData.id) {
       setMapNodes((prevNodes) =>
         prevNodes.map((node) =>
           node.id === currentLiveData.id
-            ? { 
-                ...node, 
-                pm25: currentLiveData.pm25 ?? node.pm25, 
+            ? {
+                ...node,
+                pm25: currentLiveData.pm25 ?? node.pm25,
                 co2: currentLiveData.co2 ?? node.co2,
-                exposureRiskScore: currentLiveData.exposureRiskScore ?? node.exposureRiskScore
+                exposureRiskScore:
+                  currentLiveData.exposureRiskScore ?? node.exposureRiskScore,
               }
-            : node
-        )
+            : node,
+        ),
       );
     }
   }, [currentLiveData]);
@@ -282,17 +415,16 @@ export default function MapDashboard({ deviceData = [], liveData = null }) {
                 </select>
               </div>
 
-              <div>
-                <div className="flex justify-between text-[11px] text-slate-400 mb-1">
-                  <span>Safety Avoidance Priority</span>
+              <div className="rounded-2xl border border-white/10 bg-emerald-500/10 p-3">
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-200">
+                    Auto Safety Weight
+                  </span>
                   <span className="text-emerald-400 font-bold">x{safetyWeight}</span>
                 </div>
-                <input 
-                  type="range" min="0" max="20" step="1" 
-                  value={safetyWeight} 
-                  onChange={(e) => setSafetyWeight(Number(e.target.value))}
-                  className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
-                />
+                <p className="mt-2 text-[11px] text-slate-300">
+                  Calculated from current SPO2, heart rate, CO, and PM2.5.
+                </p>
               </div>
             </div>
 
@@ -311,8 +443,9 @@ export default function MapDashboard({ deviceData = [], liveData = null }) {
           {/* Interactive Geographic Window Wrapper Panel */}
           <div className="xl:col-span-3 rounded-2xl overflow-hidden border border-white/10 bg-slate-950/40 p-2">
             <LiveMap 
-              nodes={mapNodes}
-              markerNodes={displayNodes}
+              nodes={heatmapNodes}
+              markerNodes={markerNodes}
+              routeMarkers={routeMarkers}
               targetMetric={activeMetric}
               routePath={computedRoute}
             />

@@ -12,6 +12,29 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
+function createLabelIcon(label, color = "#0f172a") {
+  return L.divIcon({
+    className: "route-label-icon",
+    html: `<div style="
+      min-width: 28px;
+      height: 28px;
+      border-radius: 9999px;
+      background: ${color};
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      border: 2px solid #ffffff;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.28);
+    ">${label}</div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -10],
+  });
+}
+
 // ── 1. Helper component to handle the dynamic canvas heatmap layer render loop ──
 function HeatmapLayer({ nodes, targetMetric }) {
   const map = useMap();
@@ -83,13 +106,21 @@ function AutoFitBounds({ nodes }) {
 }
 
 // ── 3. Main Export Component ──
-export default function LiveMap({ nodes = [], markerNodes = [], targetMetric = "pm25", routePath = [] }) {
+export default function LiveMap({
+  nodes = [],
+  markerNodes = [],
+  routeMarkers = [],
+  targetMetric = "pm25",
+  routePath = [],
+}) {
   const defaultCenter = [27.6194, 85.5385];
   const visibleNodes = Array.isArray(nodes) ? nodes : [nodes];
   const visibleMarkerNodes = Array.isArray(markerNodes) ? markerNodes : [markerNodes];
+  const visibleRouteMarkers = Array.isArray(routeMarkers) ? routeMarkers : [routeMarkers];
   const validHeatNodes = visibleNodes.filter((n) => n && n.lat && n.lng);
   const validMarkerNodes = visibleMarkerNodes.filter((n) => n && n.lat && n.lng);
-  const fitBoundsNodes = [...validHeatNodes, ...validMarkerNodes];
+  const validRouteMarkers = visibleRouteMarkers.filter((n) => n && n.lat && n.lng);
+  const fitBoundsNodes = [...validHeatNodes, ...validMarkerNodes, ...validRouteMarkers];
 
   return (
     <div className="w-full h-[500px] rounded-2xl overflow-hidden relative border border-slate-200 shadow-sm">
@@ -139,6 +170,25 @@ export default function LiveMap({ nodes = [], markerNodes = [], targetMetric = "
                   <li><strong>CO₂:</strong> {n.co2} ppm</li>
                   <li><strong>Risk Level:</strong> {n.exposureRiskScore}</li>
                 </ul>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
+        {validRouteMarkers.map((n) => (
+          <Marker
+            key={`route-${n.label}-${n.id ?? `${n.lat}-${n.lng}`}`}
+            position={[n.lat, n.lng]}
+            icon={createLabelIcon(n.label, n.color || "#0f172a")}
+          >
+            <Popup>
+              <div className="text-slate-900 p-1 font-sans">
+                <h4 className="font-bold text-xs border-b pb-1 mb-1 border-slate-200">
+                  {n.label} — {n.locationName || `Node ${n.id}`}
+                </h4>
+                <p className="text-[11px] text-slate-600">
+                  {n.description || "Selected route endpoint"}
+                </p>
               </div>
             </Popup>
           </Marker>

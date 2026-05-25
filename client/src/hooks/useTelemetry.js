@@ -1,15 +1,26 @@
 // client/src/hooks/useTelemetry.js
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+const DEFAULT_WS_URL = 'ws://localhost:5000';
 
 export function useTelemetry() {
   const [liveData, setLiveData] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const socketRef = useRef(null);
 
   useEffect(() => {
-    // 1. Establish connection to your modular Express WebSocket server
-    const socket = new WebSocket('ws://localhost:5000');
+    const socketUrl = import.meta.env.VITE_WS_URL || DEFAULT_WS_URL;
+    let isMounted = true;
+
+    if (socketRef.current) {
+      return undefined;
+    }
+
+    const socket = new WebSocket(socketUrl);
+    socketRef.current = socket;
 
     socket.onopen = () => {
+      if (!isMounted) return;
       setIsConnected(true);
       console.log('🔗 WebSocket connection established with Proton Engine.');
     };
@@ -17,11 +28,10 @@ export function useTelemetry() {
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
-        // Skip the initial server connection confirmation packet
-        if (data.status === 'connected') return;
 
-        // 2. Feed the enriched dataset (with exposureRiskScore) directly to React state
+        if (data.status === 'connected') return;
+        if (!isMounted) return;
+
         setLiveData(data);
       } catch (error) {
         console.error('Error parsing incoming WebSocket packet:', error);
@@ -29,17 +39,30 @@ export function useTelemetry() {
     };
 
     socket.onclose = () => {
+      if (socketRef.current === socket) {
+        socketRef.current = null;
+      }
+
+      if (!isMounted) return;
       setIsConnected(false);
       console.log('❌ Disconnected from Proton WebSocket server.');
     };
 
     socket.onerror = (error) => {
+      if (!isMounted) return;
       console.error('WebSocket error:', error);
     };
 
-    // 3. Cleanup connection if the user switches routes or closes the tab
     return () => {
-      socket.close();
+      isMounted = false;
+
+      if (socketRef.current === socket) {
+        socketRef.current = null;
+      }
+
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      }
     };
   }, []);
 

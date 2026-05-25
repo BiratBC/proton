@@ -9,7 +9,7 @@ import {
   doc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { deviceLocationsData } from "../lib/dummyData.js";
+import { deviceLocationsData, fetchDeviceLocationsData } from "../lib/dummyData.js";
 
 import { auth } from "../firebase.js";
 
@@ -24,10 +24,32 @@ export default function RealtimeVerifier() {
   const [lastPayload, setLastPayload] = useState(null);
   const [sensorData, setSensorData] = useState(null);
   const [dbStatus, setDbStatus] = useState("waiting"); // "waiting" | "live" | "error"
-    const [airData, setAirData]       = useState(null);
+  const [airData, setAirData] = useState(null);
+  const [deviceLocations, setDeviceLocations] = useState(deviceLocationsData);
+  const [activeUserId, setActiveUserId] = useState(auth.currentUser?.uid ?? null);
 
   const socketUrl = useMemo(() => getSocketUrl(), []);
   const wsRef = useRef(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    fetchDeviceLocationsData()
+      .then((data) => {
+        if (mounted) {
+          setDeviceLocations(data);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setDeviceLocations(deviceLocationsData);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const pickLatestReading = (readings = []) => {
     const normalized = readings
@@ -47,7 +69,7 @@ export default function RealtimeVerifier() {
   };
 
   const latestVitals = useMemo(() => {
-    const source = lastPayload ?? sensorData ?? {};
+    const source = sensorData ?? lastPayload ?? {};
     const latestHeartRateReading = pickLatestReading(source.heart_rate_readings);
     const latestSpo2Reading = pickLatestReading(source.spo2_readings);
 
@@ -91,11 +113,29 @@ export default function RealtimeVerifier() {
     ws.onopen = () => {
       setStatus("connected");
       addMessage("system", `Connected to ${socketUrl}`);
+
+      if (activeUserId) {
+        ws.send(
+          JSON.stringify({
+            type: "subscribe",
+            userId: activeUserId,
+          }),
+        );
+      }
     };
 
     ws.onmessage = (event) => {
       try {
         const parsed = JSON.parse(event.data);
+
+        if (parsed?.status === "connected") {
+          return;
+        }
+
+        if (parsed?.type === "subscribed") {
+          return;
+        }
+
         setLastPayload(parsed);
         addMessage(
           "telemetry",
@@ -152,10 +192,26 @@ export default function RealtimeVerifier() {
   useEffect(() => {
     let unsubscribe = null;
     const authUnsubscribe = auth.onAuthStateChanged((user) => {
+      const nextUserId = user?.uid ?? null;
+
+      console.log(`User : ${nextUserId ?? "anonymous"}`);
+      setActiveUserId(nextUserId);
+      setLastPayload(null);
+
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: nextUserId ? "subscribe" : "unsubscribe",
+            userId: nextUserId,
+          }),
+        );
+      }
+
       if (unsubscribe) {
         unsubscribe();
         unsubscribe = null;
       }
+
       if (!user) {
         setSensorData(null);
         setDbStatus("waiting");
@@ -368,7 +424,7 @@ export default function RealtimeVerifier() {
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Total Steps
+                  Air Quality
                 </p>
                 <p className="mt-2 text-2xl font-bold text-cyan-400">
                   {latestVitals.steps != null ? `${latestVitals.steps} steps` : "—"}
@@ -446,7 +502,15 @@ export default function RealtimeVerifier() {
         )}
 
         {/* ── Leaflet OpenStreetMap Context Component ───────────────────── */}
-        <MapDashboard liveData={lastPayload} deviceData={deviceLocationsData} />
+        <MapDashboard
+          liveData={lastPayload}
+          deviceData={deviceLocations}
+          userVitals={latestVitals}
+          environment={{
+            co: airData?.co_ppm,
+            pm25: airData?.dust_density,
+          }}
+        />
       </div>
     </div>
   );
