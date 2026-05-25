@@ -10,6 +10,8 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { deviceLocationsData, fetchDeviceLocationsData } from "../lib/dummyData.js";
+// import AlertBanner from "../Components/AlertBanner.jsx"; 
+// import AnomalyDetector from "../lib/anomalyDetector.js"; 
 
 import { auth } from "../firebase.js";
 
@@ -27,6 +29,8 @@ export default function RealtimeVerifier() {
   const [airData, setAirData] = useState(null);
   const [deviceLocations, setDeviceLocations] = useState(deviceLocationsData);
   const [activeUserId, setActiveUserId] = useState(auth.currentUser?.uid ?? null);
+   const [alerts, setAlerts]         = useState([]);  // ← NEW
+  const [riskScore, setRiskScore]   = useState(0);   // ← NEW
 
   const socketUrl = useMemo(() => getSocketUrl(), []);
   const wsRef = useRef(null);
@@ -345,6 +349,7 @@ export default function RealtimeVerifier() {
             </button>
           </div>
         </div>
+         {/* <AlertBanner alerts={alerts} onDismiss={(type) => console.log("Dismissed:", type)} /> */}
 
         {/* ── Middle row (Payload Dashboards) ──────────────────────────── */}
         <div className="grid gap-8 lg:grid-cols-2">
