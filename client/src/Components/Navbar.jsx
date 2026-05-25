@@ -1,4 +1,4 @@
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { getAuth, onAuthStateChanged, signOut } from "firebase/auth";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,14 +13,26 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [currentUser, setCurrentUser] = useState("");
+
+  const handleLogout = async () => {
+    try {
+      const auth = getAuth();
+      await signOut(auth);
+      navigate("/login");
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+    }
+  };
+
   // Firebase auth — unchanged logic, moved into useEffect to avoid re-subscribing on every render
   useEffect(() => {
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setCurrentUser(user.displayName);
-        console.log(`User signed in: ${user.displayName} (${user.email})`);
+        setCurrentUser(user.displayName || user.email || "");
+        console.log(`User signed in: ${user.displayName || user.email} (${user.email})`);
       } else {
+        setCurrentUser("");
         console.log("No user is signed in.");
       }
     });
@@ -73,15 +85,21 @@ const Navbar = () => {
               <div className="w-8 h-8 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 font-semibold text-sm">
                 {currentUser.charAt(0).toUpperCase()}
               </div>
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl text-sm font-medium px-4"
+              >
+                Logout
+              </Button>
             </div>
           ) : (
-           
             <Button
-          onClick={() => navigate("/login")}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md shadow-emerald-200 text-sm font-medium px-4"
-        >
-          Login
-        </Button>
+              onClick={() => navigate("/login")}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md shadow-emerald-200 text-sm font-medium px-4"
+            >
+              Login
+            </Button>
           )}
         </div>
       </nav>

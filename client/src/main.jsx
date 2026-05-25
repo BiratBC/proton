@@ -6,7 +6,10 @@ import Root from "./Root.jsx";
 import HomePage from "./pages/Homepage.jsx";
 import LoginPage from "./pages/Login.jsx";
 import SignupPage from "./pages/Signup.jsx";
+import Features from "./pages/Features.jsx";
+import About from "./pages/About.jsx";
 import RealtimeVerifier from "./pages/Dashboard.jsx";
+import ProtectedRoute from "./Components/ProtectedRoute.jsx";
 import "./index.css";
 import { LoadingBarContainer } from "react-top-loading-bar";
 import { ToastContainer } from "react-toastify";
@@ -30,8 +33,20 @@ const routing = createBrowserRouter([
       },
       {
         path: "dashboard",
-        element: <RealtimeVerifier />,
+        element: (
+          <ProtectedRoute>
+            <RealtimeVerifier />
+          </ProtectedRoute>
+        ),
       },
+      {
+        path: "features",
+        element: <Features />,
+      },
+      {
+        path: "about",
+        element: <About />,
+      }
     ],
   },
 ]);

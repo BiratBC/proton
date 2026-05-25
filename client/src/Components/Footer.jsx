@@ -28,7 +28,7 @@ const Footer = () => {
 
             {/* Glass pills */}
             <div className="flex gap-2 mt-5 flex-wrap">
-              {["IoT", "ESP32", "React", "AI"].map((tag) => (
+              {["IoT", "ESP32", "React"].map((tag) => (
                 <span
                   key={tag}
                   className="text-[11px] font-semibold px-3 py-1 rounded-full bg-white/8 border border-white/15 text-white/60 backdrop-blur-sm tracking-wide"

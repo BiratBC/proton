@@ -1,8 +1,16 @@
 import React, { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Polyline, useMap } from "react-leaflet"; // ← MAKE SURE Polyline IS HERE!
+import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from "react-leaflet"; // ← Added Marker and Popup
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.heat"; 
+
+// Fix default Leaflet icon paths breaking under asset bundling frameworks (Vite, Webpack, etc.)
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
 
 // ── 1. Helper component to handle the dynamic canvas heatmap layer render loop ──
 function HeatmapLayer({ nodes, targetMetric }) {
@@ -54,7 +62,7 @@ function HeatmapLayer({ nodes, targetMetric }) {
   return null;
 }
 
-// ── 2. Helper component to automatically fit the map view box over your 50 nodes ──
+// ── 2. Helper component to automatically fit the map view box over nodes ──
 function AutoFitBounds({ nodes }) {
   const map = useMap();
 
@@ -75,9 +83,13 @@ function AutoFitBounds({ nodes }) {
 }
 
 // ── 3. Main Export Component ──
-// Ensure routePath = [] is destructured right here in the parameters!
-export default function LiveMap({ nodes = [], targetMetric = "pm25", routePath = [] }) {
+export default function LiveMap({ nodes = [], markerNodes = [], targetMetric = "pm25", routePath = [] }) {
   const defaultCenter = [27.6194, 85.5385];
+  const visibleNodes = Array.isArray(nodes) ? nodes : [nodes];
+  const visibleMarkerNodes = Array.isArray(markerNodes) ? markerNodes : [markerNodes];
+  const validHeatNodes = visibleNodes.filter((n) => n && n.lat && n.lng);
+  const validMarkerNodes = visibleMarkerNodes.filter((n) => n && n.lat && n.lng);
+  const fitBoundsNodes = [...validHeatNodes, ...validMarkerNodes];
 
   return (
     <div className="w-full h-[500px] rounded-2xl overflow-hidden relative border border-slate-200 shadow-sm">
@@ -98,7 +110,7 @@ export default function LiveMap({ nodes = [], targetMetric = "pm25", routePath =
         />
 
         {/* Dynamic Thermal Heat Rendering Canvas Engine */}
-        <HeatmapLayer nodes={nodes} targetMetric={targetMetric} />
+        <HeatmapLayer nodes={validHeatNodes} targetMetric={targetMetric} />
 
         {/* Dynamic Real-time Safe Vector Polyline Engine Overlay */}
         {routePath && routePath.length > 0 && (
@@ -114,8 +126,26 @@ export default function LiveMap({ nodes = [], targetMetric = "pm25", routePath =
           />
         )}
 
+        {/* ─── 4. PHYSICAL PIN MARKERS RENDER LOOP ─── */}
+        {validMarkerNodes.map((n) => (
+          <Marker key={n.id ?? `${n.lat}-${n.lng}`} position={[n.lat, n.lng]}>
+            <Popup>
+              <div className="text-slate-900 p-1 font-sans">
+                <h4 className="font-bold text-xs border-b pb-1 mb-1 border-slate-200">
+                  {n.locationName || `Device ID: ${n.id}`}
+                </h4>
+                <ul className="text-[11px] space-y-0.5 text-slate-600">
+                  <li><strong>PM2.5:</strong> {n.pm25} µg/m³</li>
+                  <li><strong>CO₂:</strong> {n.co2} ppm</li>
+                  <li><strong>Risk Level:</strong> {n.exposureRiskScore}</li>
+                </ul>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
         {/* Handles map window centering updates automatically */}
-        <AutoFitBounds nodes={nodes} />
+        <AutoFitBounds nodes={fitBoundsNodes} />
       </MapContainer>
     </div>
   );

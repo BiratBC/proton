@@ -6,6 +6,7 @@ import {
   query,
   orderBy,
   limit,
+  doc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { deviceLocationsData } from "../lib/dummyData.js";
@@ -23,9 +24,57 @@ export default function RealtimeVerifier() {
   const [lastPayload, setLastPayload] = useState(null);
   const [sensorData, setSensorData] = useState(null);
   const [dbStatus, setDbStatus] = useState("waiting"); // "waiting" | "live" | "error"
+    const [airData, setAirData]       = useState(null);
 
   const socketUrl = useMemo(() => getSocketUrl(), []);
   const wsRef = useRef(null);
+
+  const pickLatestReading = (readings = []) => {
+    const normalized = readings
+      .filter(Boolean)
+      .map((reading) => {
+        const timestamp = reading.timestamp ?? reading.time ?? reading.date;
+        const parsedTimestamp = timestamp ? Date.parse(timestamp) : NaN;
+
+        return {
+          ...reading,
+          parsedTimestamp: Number.isFinite(parsedTimestamp) ? parsedTimestamp : -Infinity,
+        };
+      })
+      .sort((a, b) => b.parsedTimestamp - a.parsedTimestamp);
+
+    return normalized[0] ?? null;
+  };
+
+  const latestVitals = useMemo(() => {
+    const source = lastPayload ?? sensorData ?? {};
+    const latestHeartRateReading = pickLatestReading(source.heart_rate_readings);
+    const latestSpo2Reading = pickLatestReading(source.spo2_readings);
+
+    return {
+      heartRate:
+        source.avg_heart_rate ??
+        latestHeartRateReading?.bpm ??
+        latestHeartRateReading?.value ??
+        source.heartRate ??
+        source.heart_rate ??
+        source.hr ??
+        source.heartRateValue,
+      spo2:
+        source.avg_spo2 ??
+        latestSpo2Reading?.percentage ??
+        latestSpo2Reading?.value ??
+        source.spo2 ??
+        source.spO2 ??
+        source.spo2Value,
+      steps:
+        source.steps ??
+        source.step_count ??
+        source.stepCount ??
+        source.total_steps ??
+        source.stepsTaken,
+    };
+  }, [sensorData, lastPayload]);
 
   // ── WebSocket ────────────────────────────────────────────────────────────
   const connect = () => {
@@ -85,51 +134,83 @@ export default function RealtimeVerifier() {
       if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.close();
     };
   }, []);
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      doc(db, "air_quality", "esp32_sensor_1"),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          setAirData(snapshot.data());          
+        }
+      },
+      (err) => console.error("Air quality listener error:", err),
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   // ── Firestore real-time listener ─────────────────────────────────────────
   useEffect(() => {
-    let unsubscribe;
+    let unsubscribe = null;
+    const authUnsubscribe = auth.onAuthStateChanged((user) => {
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
+      if (!user) {
+        setSensorData(null);
+        setDbStatus("waiting");
+        return;
+      }
 
-    const user = "lyOlj1IPpyWZPLzyjqw4LVWXKyA3";
+      const baseCollection = collection(db, "users", user.uid, "health_data");
 
-    if (!user) {
-      console.log("No authenticated user");
-      return;
-    }
+      const attachQuery = (queryConfig, onEmpty) => {
+        unsubscribe = onSnapshot(
+          queryConfig,
+          (snapshot) => {
+            if (!snapshot.empty) {
+              const latest = snapshot.docs[0].data();
+              setSensorData(latest);
+              setDbStatus("live");
+              return;
+            }
 
-    try {
-      const q = query(
-        collection(db, "users", user, "health_data"),
-        orderBy("date", "desc"),
-        limit(1),
-      );
+            if (typeof onEmpty === "function") {
+              onEmpty();
+            }
+          },
+          (err) => {
+            console.error("Firestore error:", err);
+            setSensorData(null);
+            setDbStatus("error");
+          },
+        );
+      };
 
-      unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          if (!snapshot.empty) {
-            const latest = snapshot.docs
-              .sort((a, b) => b.id.localeCompare(a.id))[0]
-              .data();
-
-            setSensorData(latest);
-            setDbStatus("live");
-          } else {
-            console.log("No health_data documents found");
+      const fallbackToSpo2Readings = () => {
+        attachQuery(
+          query(
+            baseCollection,
+            orderBy("spo2_readings.timestamp", "desc"),
+            limit(1),
+          ),
+          () => {
+            setSensorData(null);
             setDbStatus("waiting");
-          }
-        },
-        (err) => {
-          console.error("Firestore error:", err);
-          setDbStatus("error");
-        },
-      );
-    } catch (err) {
-      console.error("Firestore setup error:", err);
-      setDbStatus("error");
-    }
+          },
+        );
+      };
 
-    return () => unsubscribe?.();
+      attachQuery(
+        query(baseCollection, orderBy("date", "desc"), limit(1)),
+        fallbackToSpo2Readings,
+      );
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+      authUnsubscribe();
+    };
   }, []);
 
   // ── Derived UI values ────────────────────────────────────────────────────
@@ -270,9 +351,8 @@ export default function RealtimeVerifier() {
                   Source Pulse Rate
                 </p>
                 <p className="mt-2 text-2xl font-bold text-cyan-400">
-                  {/* Changed from heartRate to avg_heart_rate */}
-                  {sensorData?.avg_heart_rate
-                    ? `${sensorData.avg_heart_rate} bpm`
+                  {latestVitals.heartRate != null
+                    ? `${latestVitals.heartRate} bpm`
                     : "—"}
                 </p>
               </div>
@@ -281,8 +361,7 @@ export default function RealtimeVerifier() {
                   Blood Oxygen (SpO2)
                 </p>
                 <p className="mt-2 text-2xl font-bold text-cyan-400">
-                  {/* Changed to map a field that actually exists in your subcollection document */}
-                  {sensorData?.avg_spo2 ? `${sensorData.avg_spo2} %` : "—"}
+                  {latestVitals.spo2 != null ? `${latestVitals.spo2} %` : "—"}
                 </p>
               </div>
             </div>
@@ -292,7 +371,7 @@ export default function RealtimeVerifier() {
                   Total Steps
                 </p>
                 <p className="mt-2 text-2xl font-bold text-cyan-400">
-                  {sensorData?.steps ? `${sensorData.steps} steps` : "—"}
+                  {latestVitals.steps != null ? `${latestVitals.steps} steps` : "—"}
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
@@ -304,22 +383,35 @@ export default function RealtimeVerifier() {
                 </p>
               </div>
             </div>
+            {/* ── Air Quality row — now reading from airData ── */}
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                   CO Concentration
                 </p>
                 <p className="mt-2 text-2xl font-bold text-cyan-400">
-                  {sensorData?.heartRate ? `${sensorData.heartRate} bpm` : "—"}
+                  {airData?.co_ppm != null ? `${airData.co_ppm} ppm` : "—"}
                 </p>
+                {airData?.co_status && (
+                  <p className="mt-1 text-xs text-slate-400">
+                    {airData.co_status}
+                  </p>
+                )}
               </div>
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Particulate Matter
+                  Particulate Matter (PM2.5)
                 </p>
                 <p className="mt-2 text-2xl font-bold text-cyan-400">
-                  {sensorData?.pm25 ? `${sensorData.pm25} µg/m³` : "—"}
+                  {airData?.dust_density != null
+                    ? `${airData.dust_density} µg/m³`
+                    : "—"}
                 </p>
+                {airData?.dust_label && (
+                  <p className="mt-1 text-xs text-slate-400">
+                    {airData.dust_label}
+                  </p>
+                )}
               </div>
             </div>
           </div>

@@ -1,12 +1,130 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTelemetry } from '../hooks/useTelemetry.js';
 import LiveMap from './LiveMap';
 
 // Approx. 250 meters in coordinate degrees for localized exposure cross-checking
 const HAZARD_THRESHOLD_DEGREE = 0.0025;
+const ROUTE_WEIGHT_RISK = 0.5;
+const ROUTE_WEIGHT_PM25 = 0.3;
+const ROUTE_WEIGHT_CO2 = 0.2;
+const PM25_MAX = 150;
+const CO2_BASELINE = 400;
+const CO2_MAX = 1500;
+const RISK_MAX = 100;
 
-export default function MapDashboard({ deviceData = [] }) {
-  const { liveData, isConnected } = useTelemetry();
+function normalizeLocationCoordinates(location) {
+  if (!location) return null;
+
+  if (Array.isArray(location) && location.length >= 2) {
+    const lat = Number(location[0]);
+    const lng = Number(location[1]);
+
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { lat, lng };
+    }
+
+    return null;
+  }
+
+  if (typeof location === 'string') {
+    const [lat, lng] = location
+      .split(',')
+      .map((value) => Number(value.trim()))
+      .filter((value) => Number.isFinite(value));
+
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { lat, lng };
+    }
+
+    return null;
+  }
+
+  if (typeof location === 'object') {
+    const lat = Number(location.lat ?? location.latitude);
+    const lng = Number(location.lng ?? location.longitude ?? location.lon);
+
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { lat, lng };
+    }
+  }
+
+  return null;
+}
+
+function buildLiveMarkerNode(payload) {
+  if (!payload) return null;
+
+  const coordinates = normalizeLocationCoordinates(
+    payload.location ?? payload.coordinates ?? payload.coords ?? payload.position
+  ) ?? normalizeLocationCoordinates({
+    lat: payload.lat,
+    lng: payload.lng,
+  });
+
+  if (!coordinates) return null;
+
+  return {
+    id: payload.id ?? payload.deviceId ?? 'live-payload',
+    lat: coordinates.lat,
+    lng: coordinates.lng,
+    pm25: payload.pm25 ?? payload.airQuality?.pm25 ?? null,
+    co2: payload.co2 ?? payload.airQuality?.co2 ?? null,
+    exposureRiskScore: payload.exposureRiskScore ?? payload.riskScore ?? null,
+    locationName: payload.locationName ?? payload.deviceName ?? payload.source ?? 'Live Payload',
+  };
+}
+
+function normalizeRiskScore(value) {
+  const safeValue = Number(value);
+  if (!Number.isFinite(safeValue)) return 0;
+  return Math.min(Math.max(safeValue, 0), RISK_MAX) / RISK_MAX;
+}
+
+function normalizePm25(value) {
+  const safeValue = Number(value);
+  if (!Number.isFinite(safeValue)) return 0;
+  return Math.min(Math.max(safeValue, 0), PM25_MAX) / PM25_MAX;
+}
+
+function normalizeCo2(value) {
+  const safeValue = Number(value);
+  if (!Number.isFinite(safeValue)) return 0;
+
+  const normalized = Math.min(
+    Math.max(safeValue - CO2_BASELINE, 0),
+    CO2_MAX - CO2_BASELINE
+  );
+
+  return normalized / (CO2_MAX - CO2_BASELINE);
+}
+
+function getCompositeHazardScore(node) {
+  const riskScore = normalizeRiskScore(node.exposureRiskScore);
+  const pm25Score = normalizePm25(node.pm25);
+  const co2Score = normalizeCo2(node.co2);
+
+  return (
+    ROUTE_WEIGHT_RISK * riskScore +
+    ROUTE_WEIGHT_PM25 * pm25Score +
+    ROUTE_WEIGHT_CO2 * co2Score
+  );
+}
+
+function getRouteCandidateNodes(nodes, livePayload) {
+  const liveNode = buildLiveMarkerNode(livePayload);
+
+  if (!liveNode) return nodes;
+
+  const existingNode = nodes.find((node) => node.id === liveNode.id);
+
+  if (existingNode) return nodes;
+
+  return [...nodes, liveNode];
+}
+
+export default function MapDashboard({ deviceData = [], liveData = null }) {
+  const { liveData: streamedLiveData } = useTelemetry();
+  const currentLiveData = liveData ?? streamedLiveData;
   const [activeMetric, setActiveMetric] = useState('pm25');
   const [mapNodes, setMapNodes] = useState(deviceData);
 
@@ -20,30 +138,36 @@ export default function MapDashboard({ deviceData = [] }) {
     if (deviceData.length > 0) setMapNodes(deviceData);
   }, [deviceData]);
 
+  const displayNodes = useMemo(() => {
+    const liveMarkerNode = buildLiveMarkerNode(currentLiveData);
+    return liveMarkerNode ? [liveMarkerNode] : mapNodes;
+  }, [currentLiveData, mapNodes]);
+
   useEffect(() => {
-    if (liveData && liveData.id) {
+    if (currentLiveData && currentLiveData.id) {
       setMapNodes((prevNodes) =>
         prevNodes.map((node) =>
-          node.id === liveData.id
+          node.id === currentLiveData.id
             ? { 
                 ...node, 
-                pm25: liveData.pm25 ?? node.pm25, 
-                co2: liveData.co2 ?? node.co2,
-                exposureRiskScore: liveData.exposureRiskScore ?? node.exposureRiskScore
+                pm25: currentLiveData.pm25 ?? node.pm25, 
+                co2: currentLiveData.co2 ?? node.co2,
+                exposureRiskScore: currentLiveData.exposureRiskScore ?? node.exposureRiskScore
               }
             : node
         )
       );
     }
-  }, [liveData]);
+  }, [currentLiveData]);
 
   // Recalculate the clean eco-route automatically whenever nodes shift, sliders adjust, or metrics toggle
   useEffect(() => {
     const fetchRealStreetRoute = async () => {
-      if (!mapNodes.length || !startNode || !endNode) return;
+      const routeNodes = getRouteCandidateNodes(mapNodes, currentLiveData);
+      if (!routeNodes.length || !startNode || !endNode) return;
 
-      const origin = mapNodes.find(n => n.id === startNode);
-      const destination = mapNodes.find(n => n.id === endNode);
+      const origin = routeNodes.find(n => n.id === startNode);
+      const destination = routeNodes.find(n => n.id === endNode);
       if (!origin || !destination) return;
 
       try {
@@ -64,26 +188,19 @@ export default function MapDashboard({ deviceData = [] }) {
         data.routes.forEach((route) => {
           // Map OSRM [lng, lat] geometry coordinates back into standard Leaflet format [lat, lng]
           const streetCoords = route.geometry.coordinates.map((coord) => [coord[1], coord[0]]);
-          
+
           let physicalDistance = route.distance / 1000; // Convert meters to kilometers
           let pollutionExposurePenalty = 0;
 
           // 3. Scan along the route geometry to track hot spot entries
           streetCoords.forEach(([streetLat, streetLng]) => {
-            mapNodes.forEach((node) => {
+            routeNodes.forEach((node) => {
               const latDiff = Math.abs(streetLat - node.lat);
               const lngDiff = Math.abs(streetLng - node.lng);
-              
+
               // If street layout passes close to a monitored tracking hardware coordinate
               if (latDiff < HAZARD_THRESHOLD_DEGREE && lngDiff < HAZARD_THRESHOLD_DEGREE) {
-                // Use explicit exposure scores if tracking human vitals, or default to ambient normalized data
-                const baseHazard = node.exposureRiskScore ?? (
-                  activeMetric === 'pm25' 
-                    ? (node.pm25 || 0) / 25 
-                    : (node.co2 || 400) / 300
-                );
-                
-                pollutionExposurePenalty += baseHazard;
+                pollutionExposurePenalty += getCompositeHazardScore(node);
               }
             });
           });
@@ -104,7 +221,7 @@ export default function MapDashboard({ deviceData = [] }) {
     };
 
     fetchRealStreetRoute();
-  }, [mapNodes, startNode, endNode, safetyWeight, activeMetric]);
+  }, [mapNodes, currentLiveData, startNode, endNode, safetyWeight]);
 
   return (
     <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur shadow-2xl">
@@ -171,7 +288,7 @@ export default function MapDashboard({ deviceData = [] }) {
                   <span className="text-emerald-400 font-bold">x{safetyWeight}</span>
                 </div>
                 <input 
-                  type="range" min="0" max="10" step="1" 
+                  type="range" min="0" max="20" step="1" 
                   value={safetyWeight} 
                   onChange={(e) => setSafetyWeight(Number(e.target.value))}
                   className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
@@ -195,6 +312,7 @@ export default function MapDashboard({ deviceData = [] }) {
           <div className="xl:col-span-3 rounded-2xl overflow-hidden border border-white/10 bg-slate-950/40 p-2">
             <LiveMap 
               nodes={mapNodes}
+              markerNodes={displayNodes}
               targetMetric={activeMetric}
               routePath={computedRoute}
             />
